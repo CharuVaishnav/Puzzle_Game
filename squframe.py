@@ -10,6 +10,9 @@ from mediapipe.tasks.python import BaseOptions, vision
 
 CAM_INDEX = 0
 PINCH_THRESH = 40
+PINCH_ON = 35
+PINCH_OFF = 55
+CURSOR_SMOOTH = 0.4
 STEADY_THRESH = 40
 HOLD_TIME = 1.5
 MIN_RECT = 150
@@ -28,7 +31,10 @@ landmarker = vision.HandLandmarker.create_from_options(vision.HandLandmarkerOpti
     num_hands=2, running_mode=vision.RunningMode.VIDEO,
     min_hand_detection_confidence=0.6, min_tracking_confidence=0.6))
 last_ts = 0
-cap = cv2.VideoCapture(CAM_INDEX)
+cap = cv2.VideoCapture(CAM_INDEX, cv2.CAP_DSHOW)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
 WINDOW_NAME = "SquFrame Puzzle"
 cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
@@ -42,6 +48,8 @@ tiles = []
 order = []
 selected = None
 prev_pinch = False
+pinch_state = False
+smooth_cursor = None
 move_count = 0
 solved = False
 solved_time = 0.0
@@ -55,8 +63,7 @@ def hand_points(lm, w, h):
     thumb = (int(lm[4].x * w), int(lm[4].y * h))
     index = (int(lm[8].x * w), int(lm[8].y * h))
     mid = ((thumb[0] + index[0]) // 2, (thumb[1] + index[1]) // 2)
-    pinching = dist(thumb, index) < PINCH_THRESH
-    return pinching, mid, index
+    return dist(thumb, index), mid, index
 
 
 def make_tiles(img):
@@ -95,7 +102,7 @@ while True:
     if mode == "CAPTURE":
         if len(hands_data) >= 2:
             p1, p2 = hands_data[0][1], hands_data[1][1]
-            pinching = hands_data[0][0] and hands_data[1][0]
+            pinching = hands_data[0][0] < PINCH_THRESH and hands_data[1][0] < PINCH_THRESH
             x1, y1 = min(p1[0], p2[0]), min(p1[1], p2[1])
             x2, y2 = max(p1[0], p2[0]), max(p1[1], p2[1])
             rw, rh = x2 - x1, y2 - y1
@@ -146,7 +153,19 @@ while True:
 
         cursor, pinching = None, False
         if hands_data:
-            pinching, _, cursor = hands_data[0]
+            d, _, raw_cursor = hands_data[0]
+            if smooth_cursor is None:
+                smooth_cursor = raw_cursor
+            else:
+                smooth_cursor = (
+                    int(CURSOR_SMOOTH * raw_cursor[0] + (1 - CURSOR_SMOOTH) * smooth_cursor[0]),
+                    int(CURSOR_SMOOTH * raw_cursor[1] + (1 - CURSOR_SMOOTH) * smooth_cursor[1]))
+            cursor = smooth_cursor
+            pinching = d < PINCH_OFF if pinch_state else d < PINCH_ON
+            pinch_state = pinching
+        else:
+            smooth_cursor = None
+            pinch_state = False
 
         hover_idx = None
         if cursor and bx <= cursor[0] < bx + BOARD and by <= cursor[1] < by + BOARD:
@@ -213,6 +232,8 @@ while True:
         hold_rect = None
         selected = None
         prev_pinch = False
+        pinch_state = False
+        smooth_cursor = None
         solved = False
 
 cap.release()
