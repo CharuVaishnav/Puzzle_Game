@@ -30,6 +30,10 @@ landmarker = vision.HandLandmarker.create_from_options(vision.HandLandmarkerOpti
 last_ts = 0
 cap = cv2.VideoCapture(CAM_INDEX)
 
+WINDOW_NAME = "SquFrame Puzzle"
+cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
+cv2.setWindowProperty(WINDOW_NAME, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+
 mode = "CAPTURE"
 hold_start = None
 hold_rect = None
@@ -196,7 +200,7 @@ while True:
             cv2.putText(frame, mv, (bx + BOARD // 2 - vw // 2, pcy + 40),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
 
-    cv2.imshow("SquFrame Puzzle", frame)
+    cv2.imshow(WINDOW_NAME, frame)
     key = cv2.waitKey(1) & 0xFF
     if key == ord('q'):
         break
