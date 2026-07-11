@@ -141,7 +141,8 @@ while True:
             r, c = divmod(i, GRID)
             tx, ty = bx + c * TILE, by + r * TILE
             frame[ty:ty + TILE, tx:tx + TILE] = tiles[order[i]]
-            cv2.rectangle(frame, (tx, ty), (tx + TILE, ty + TILE), (50, 50, 50), 1)
+            border = (0, 200, 0) if order[i] == i else (50, 50, 50)
+            cv2.rectangle(frame, (tx, ty), (tx + TILE, ty + TILE), border, 2 if order[i] == i else 1)
 
         cursor, pinching = None, False
         if hands_data:
@@ -178,7 +179,9 @@ while True:
         if cursor:
             cv2.circle(frame, cursor, 8, (0, 0, 255), -1)
 
-        cv2.putText(frame, f"Moves: {move_count}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+        correct = sum(1 for i in range(9) if order[i] == i)
+        cv2.putText(frame, f"Moves: {move_count}   Correct: {correct}/9", (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
         cv2.putText(frame, "r=recapture  q=quit", (10, h - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
 
         if solved:
